@@ -54,7 +54,7 @@ jobs:
       - name: Build and push
         run: |
           cd pgaudit
-          docker buildx bake \
+          docker buildx bake pgaudit \
             --set pgaudit.context=source \
             --set "*.args.PG_VERSION=${{ inputs.pg-version }}" \
             --set "*.args.DISTRO=${{ inputs.distro }}" \
