@@ -1,6 +1,9 @@
 name: Build pgaudit Extension
 
 on:
+  push:
+    paths:
+      - 'pgaudit/**'
   workflow_call:
     inputs:
       pgaudit-version:
@@ -22,10 +25,21 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Clone pgaudit source
+        if: github.event_name == 'workflow_call'
         run: |
           git clone https://github.com/pgaudit/pgaudit.git pgaudit/source
           cd pgaudit/source
           git checkout ${{ inputs.pgaudit-version }}
+          
+      - name: Get latest pgaudit version for push
+        if: github.event_name == 'push'
+        id: version
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/pgaudit/pgaudit/releases/latest | jq -r '.tag_name')
+          echo "version=${LATEST}" >> $GITHUB_OUTPUT
+          git clone https://github.com/pgaudit/pgaudit.git pgaudit/source
+          cd pgaudit/source
+          git checkout ${LATEST}
           
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -44,7 +58,7 @@ jobs:
             --set pgaudit.context=source \
             --set "*.args.PG_VERSION=${{ inputs.pg-version }}" \
             --set "*.args.DISTRO=${{ inputs.distro }}" \
-            --set "*.args.PGAUDIT_VERSION=${{ inputs.pgaudit-version }}" \
+            --set "*.args.PGAUDIT_VERSION=${{ inputs.pgaudit-version || steps.version.outputs.version }}" \
             --push
             
   smoke-test:
@@ -77,7 +91,7 @@ jobs:
             volumes:
             - name: pgaudit-ext
               image:
-                reference: ghcr.io/cloudnative-pg/pgaudit:${{ inputs.pg-version }}-${{ inputs.pgaudit-version }}-${{ inputs.distro }}
+                reference: ghcr.io/cloudnative-pg/pgaudit:${{ inputs.pg-version }}-${{ inputs.pgaudit-version || steps.version.outputs.version }}-${{ inputs.distro }}
           EOF
           
           kubectl wait --for=condition=Ready pod/pgaudit-test --timeout=60s
@@ -86,5 +100,5 @@ jobs:
       - name: Tag successful build
         if: success()
         run: |
-          git tag "pgaudit-${{ inputs.pgaudit-version }}"
-          git push origin "pgaudit-${{ inputs.pgaudit-version }}"
+          git tag "pgaudit-${{ inputs.pgaudit-version || steps.version.outputs.version }}"
+          git push origin "pgaudit-${{ inputs.pgaudit-version || steps.version.outputs.version }}"
