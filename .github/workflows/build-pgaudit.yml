@@ -73,11 +73,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create Kind cluster
+      - name: Get version from build
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "version=${{ inputs.pgaudit-version }}" >> $GITHUB_OUTPUT
+          else
+            LATEST=$(curl -s https://api.github.com/repos/pgaudit/pgaudit/releases/latest | jq -r '.tag_name')
+            echo "version=${LATEST}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Kind cluster with ImageVolume feature
         uses: helm/kind-action@v1
+        with:
+          config: |
+            kind: Cluster
+            apiVersion: kind.x-k8s.io/v1alpha4
+            featureGates:
+              ImageVolume: true
         
       - name: Run smoke tests
         run: |
+          PG_VER="${{ inputs.pg-version || '18' }}"
+          DISTRO="${{ inputs.distro || 'bookworm' }}"
+          PGAUDIT_VER="${{ steps.get-version.outputs.version }}"
+          
           # Create test pod with pgaudit extension
           kubectl apply -f - <<EOF
           apiVersion: v1
@@ -87,24 +107,41 @@ jobs:
           spec:
             containers:
             - name: postgres
-              image: ghcr.io/cloudnative-pg/postgresql:${{ inputs.pg-version }}-${{ inputs.distro }}
+              image: ghcr.io/cloudnative-pg/postgresql:${PG_VER}-${DISTRO}
               env:
               - name: POSTGRES_PASSWORD
                 value: test
+              - name: POSTGRES_DB
+                value: test
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  export LD_LIBRARY_PATH=/opt/extension/lib:$LD_LIBRARY_PATH
+                  export PGDATA=/tmp/pgdata
+                  mkdir -p $PGDATA
+                  chown postgres:postgres $PGDATA
+                  su postgres -c "initdb -D $PGDATA"
+                  echo "shared_preload_libraries = 'pgaudit'" >> $PGDATA/postgresql.conf
+                  su postgres -c "pg_ctl -D $PGDATA -l /tmp/logfile start"
+                  sleep 5
+                  su postgres -c "createdb test"
+                  su postgres -c "psql -d test -c 'CREATE EXTENSION pgaudit;'"
+                  echo "pgaudit extension created successfully"
+                  tail -f /tmp/logfile
               volumeMounts:
               - name: pgaudit-ext
                 mountPath: /opt/extension
             volumes:
             - name: pgaudit-ext
               image:
-                reference: ghcr.io/${{ github.repository_owner }}/pgaudit:${{ inputs.pg-version || '18' }}-${{ inputs.pgaudit-version || steps.version.outputs.version }}-${{ inputs.distro || 'bookworm' }}
+                reference: ghcr.io/${{ github.repository_owner }}/pgaudit:${PG_VER}-${PGAUDIT_VER}-${DISTRO}
           EOF
           
-          kubectl wait --for=condition=Ready pod/pgaudit-test --timeout=60s
-          kubectl exec pgaudit-test -- psql -U postgres -c "CREATE EXTENSION pgaudit;"
+          kubectl wait --for=condition=Ready pod/pgaudit-test --timeout=120s
+          kubectl logs pgaudit-test --tail=20
           
       - name: Tag successful build
         if: success()
         run: |
-          git tag "pgaudit-${{ inputs.pgaudit-version || steps.version.outputs.version }}"
-          git push origin "pgaudit-${{ inputs.pgaudit-version || steps.version.outputs.version }}"
+          git tag "pgaudit-${{ steps.get-version.outputs.version }}"
+          git push origin "pgaudit-${{ steps.get-version.outputs.version }}"
