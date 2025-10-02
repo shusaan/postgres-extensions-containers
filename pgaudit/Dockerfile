@@ -1,0 +1,19 @@
+FROM ghcr.io/cloudnative-pg/postgresql:18-minimal-bookworm AS builder
+
+USER 0
+
+COPY . /tmp/pgaudit
+
+RUN set -eux; \
+	mkdir -p /opt/extension && \
+	apt-get update && \
+	apt-get install -y --no-install-recommends build-essential clang-16 llvm-16-dev "postgresql-server-dev-18=18*" && \
+	cd /tmp/pgaudit && \
+	make clean && \
+	make USE_PGXS=1 OPTFLAGS="" && \
+	make USE_PGXS=1 install datadir=/opt/extension/share/ pkglibdir=/opt/extension/lib/
+
+FROM scratch
+
+COPY --from=builder /opt/extension/lib/ /lib/
+COPY --from=builder /opt/extension/share/ /share/

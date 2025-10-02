@@ -1,0 +1,90 @@
+name: Build pgaudit Extension
+
+on:
+  workflow_call:
+    inputs:
+      pgaudit-version:
+        required: true
+        type: string
+      pg-version:
+        required: false
+        type: string
+        default: "18"
+      distro:
+        required: false
+        type: string
+        default: "bookworm"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Clone pgaudit source
+        run: |
+          git clone https://github.com/pgaudit/pgaudit.git pgaudit/source
+          cd pgaudit/source
+          git checkout ${{ inputs.pgaudit-version }}
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Build and push
+        run: |
+          cd pgaudit
+          docker buildx bake \
+            --set pgaudit.context=source \
+            --set "*.args.PG_VERSION=${{ inputs.pg-version }}" \
+            --set "*.args.DISTRO=${{ inputs.distro }}" \
+            --set "*.args.PGAUDIT_VERSION=${{ inputs.pgaudit-version }}" \
+            --push
+            
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+        
+      - name: Run smoke tests
+        run: |
+          # Create test pod with pgaudit extension
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: pgaudit-test
+          spec:
+            containers:
+            - name: postgres
+              image: ghcr.io/cloudnative-pg/postgresql:${{ inputs.pg-version }}-${{ inputs.distro }}
+              env:
+              - name: POSTGRES_PASSWORD
+                value: test
+              volumeMounts:
+              - name: pgaudit-ext
+                mountPath: /opt/extension
+            volumes:
+            - name: pgaudit-ext
+              image:
+                reference: ghcr.io/cloudnative-pg/pgaudit:${{ inputs.pg-version }}-${{ inputs.pgaudit-version }}-${{ inputs.distro }}
+          EOF
+          
+          kubectl wait --for=condition=Ready pod/pgaudit-test --timeout=60s
+          kubectl exec pgaudit-test -- psql -U postgres -c "CREATE EXTENSION pgaudit;"
+          
+      - name: Tag successful build
+        if: success()
+        run: |
+          git tag "pgaudit-${{ inputs.pgaudit-version }}"
+          git push origin "pgaudit-${{ inputs.pgaudit-version }}"
