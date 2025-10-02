@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Default values
+# Default values___
 PG_VERSION=${PG_VERSION:-18}
 PGAUDIT_VERSION=${PGAUDIT_VERSION:-17.0}
 DISTRO=${DISTRO:-trixie}
