@@ -53,12 +53,13 @@ jobs:
           
       - name: Build and push
         run: |
-          cd pgaudit
-          docker buildx bake pgaudit \
-            --set pgaudit.context=source \
+          docker buildx bake \
+            --file pgaudit/docker-bake.hcl \
+            --set pgaudit.context=pgaudit/source \
             --set "*.args.PG_VERSION=${{ inputs.pg-version }}" \
             --set "*.args.DISTRO=${{ inputs.distro }}" \
             --set "*.args.PGAUDIT_VERSION=${{ inputs.pgaudit-version || steps.version.outputs.version }}" \
+            pgaudit \
             --push
             
   smoke-test:
