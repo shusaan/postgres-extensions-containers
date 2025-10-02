@@ -7,11 +7,12 @@ COPY . /tmp/pgaudit
 RUN set -eux; \
 	mkdir -p /opt/extension && \
 	apt-get update && \
-	apt-get install -y --no-install-recommends build-essential clang-16 llvm-16-dev "postgresql-server-dev-18=18*" && \
+	apt-get install -y --no-install-recommends build-essential git "postgresql-server-dev-18=18*" && \
 	cd /tmp/pgaudit && \
-	make clean && \
-	make USE_PGXS=1 OPTFLAGS="" && \
-	make USE_PGXS=1 install datadir=/opt/extension/share/ pkglibdir=/opt/extension/lib/
+	git checkout REL_18_STABLE && \
+	PG_CONFIG=/usr/lib/postgresql/18/bin/pg_config USE_PGXS=1 make clean && \
+	PG_CONFIG=/usr/lib/postgresql/18/bin/pg_config USE_PGXS=1 OPTFLAGS="" make && \
+	PG_CONFIG=/usr/lib/postgresql/18/bin/pg_config USE_PGXS=1 make install datadir=/opt/extension/share/ pkglibdir=/opt/extension/lib/
 
 FROM scratch
 
