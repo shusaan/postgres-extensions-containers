@@ -1,5 +1,5 @@
 variable "REGISTRY" {
-  default = "ghcr.io/${{ github.repository_owner }}"
+  default = "ghcr.io"
 }
 
 variable "PG_VERSION" {
