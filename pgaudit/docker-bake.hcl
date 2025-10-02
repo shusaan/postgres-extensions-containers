@@ -1,5 +1,5 @@
 variable "REGISTRY" {
-  default = "ghcr.io/cloudnative-pg"
+  default = "ghcr.io/${{ github.repository_owner }}"
 }
 
 variable "PG_VERSION" {
