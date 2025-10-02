@@ -7,7 +7,7 @@ COPY . /tmp/pgaudit
 RUN set -eux; \
 	mkdir -p /opt/extension && \
 	apt-get update && \
-	apt-get install -y --no-install-recommends build-essential git "postgresql-server-dev-18=18*" && \
+	apt-get install -y --no-install-recommends build-essential git "postgresql-server-dev-18=18*" libkrb5-dev libxml2-dev && \
 	cd /tmp/pgaudit && \
 	git checkout REL_18_STABLE && \
 	PG_CONFIG=/usr/lib/postgresql/18/bin/pg_config USE_PGXS=1 make clean && \
