@@ -55,13 +55,15 @@ jobs:
         run: |
           cd pgaudit
           PGAUDIT_VER="${{ inputs.pgaudit-version || steps.version.outputs.version }}"
+          REGISTRY="ghcr.io/${{ github.repository_owner }}" \
+          PG_VERSION="${{ inputs.pg-version || '18' }}" \
+          DISTRO="${{ inputs.distro || 'bookworm' }}" \
+          PGAUDIT_VERSION="${PGAUDIT_VER}" \
           docker buildx bake \
             --set pgaudit.context=source \
             --set "*.args.PG_VERSION=${{ inputs.pg-version || '18' }}" \
             --set "*.args.DISTRO=${{ inputs.distro || 'bookworm' }}" \
             --set "*.args.PGAUDIT_VERSION=${PGAUDIT_VER}" \
-            --set "REGISTRY=ghcr.io/${{ github.repository_owner }}" \
-            --set "PGAUDIT_VERSION=${PGAUDIT_VER}" \
             pgaudit \
             --push
             
