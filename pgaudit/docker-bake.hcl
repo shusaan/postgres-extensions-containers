@@ -15,7 +15,7 @@ variable "DISTRO" {
 }
 
 target "pgaudit" {
-  dockerfile = "Dockerfile"
+  dockerfile = "../Dockerfile"
   tags = [
     "${REGISTRY}/pgaudit:${PG_VERSION}-${PGAUDIT_VERSION}-${formatdate("YYYYMMDDHHMM", timestamp())}-${DISTRO}",
     "${REGISTRY}/pgaudit:${PG_VERSION}-${PGAUDIT_VERSION}-${DISTRO}",
