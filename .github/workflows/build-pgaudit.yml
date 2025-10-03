@@ -55,10 +55,18 @@ jobs:
         run: |
           cd pgaudit
           PGAUDIT_VER="${{ inputs.pgaudit-version || steps.version.outputs.version }}"
+          
+          # Add branch suffix for non-main branches
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            BRANCH_SUFFIX="-${{ github.ref_name }}"
+          else
+            BRANCH_SUFFIX=""
+          fi
+          
           REGISTRY="ghcr.io/${{ github.repository_owner }}" \
           PG_VERSION="${{ inputs.pg-version || '18' }}" \
           DISTRO="${{ inputs.distro || 'bookworm' }}" \
-          PGAUDIT_VERSION="${PGAUDIT_VER}" \
+          PGAUDIT_VERSION="${PGAUDIT_VER}${BRANCH_SUFFIX}" \
           docker buildx bake \
             --set pgaudit.context=source \
             --set "*.args.PG_VERSION=${{ inputs.pg-version || '18' }}" \
@@ -104,6 +112,16 @@ jobs:
           DISTRO="${{ inputs.distro || 'bookworm' }}"
           PGAUDIT_VER="${{ steps.get-version.outputs.version }}"
           
+          # Add branch suffix for non-main branches
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            BRANCH_SUFFIX="-${{ github.ref_name }}"
+          else
+            BRANCH_SUFFIX=""
+          fi
+          
+          IMAGE_TAG="ghcr.io/${{ github.repository_owner }}/pgaudit:${PG_VER}-${PGAUDIT_VER}${BRANCH_SUFFIX}-${DISTRO}"
+          echo "Testing with image: ${IMAGE_TAG}"
+          
           # Create test pod with pgaudit extension
           kubectl apply -f - <<EOF
           apiVersion: v1
@@ -140,7 +158,7 @@ jobs:
             volumes:
             - name: pgaudit-ext
               image:
-                reference: ghcr.io/${{ github.repository_owner }}/pgaudit:${PG_VER}-${PGAUDIT_VER}-${DISTRO}
+                reference: ${IMAGE_TAG}
           EOF
           
           kubectl describe pod pgaudit-test
@@ -149,7 +167,7 @@ jobs:
           kubectl logs pgaudit-test --tail=20
           
       - name: Tag successful build
-        if: success()
+        if: success() && github.ref == 'refs/heads/main'
         run: |
           git tag "pgaudit-${{ steps.get-version.outputs.version }}"
           git push origin "pgaudit-${{ steps.get-version.outputs.version }}"
