@@ -177,7 +177,7 @@ jobs:
               storageClass: standard
               size: 1Gi
           EOF
-          kubectl wait --for=condition=Ready pod/postgresql-with-extensions-1 --timeout=120s -n cnpg-system
+          kubectl wait --for=jsonpath='{.status.status}=Cluster in healthy state' cluster/postgresql-with-extensions --timeout=300s -n cnpg-system
           echo "✅ PostgreSQL cluster with pgaudit extension is ready"
           
       - name: Verify pgaudit Extension
