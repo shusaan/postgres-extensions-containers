@@ -143,6 +143,8 @@ jobs:
                 reference: ghcr.io/${{ github.repository_owner }}/pgaudit:${PG_VER}-${PGAUDIT_VER}-${DISTRO}
           EOF
           
+          kubectl describe pod pgaudit-test
+          kubectl get pod pgaudit-test -o yaml
           kubectl wait --for=condition=Ready pod/pgaudit-test --timeout=120s
           kubectl logs pgaudit-test --tail=20
           
