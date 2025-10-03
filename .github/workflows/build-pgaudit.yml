@@ -87,12 +87,11 @@ jobs:
         # Using the latest version of the action
         uses: helm/kind-action@v1
         with:
-          version: latest # Use latest kind binary version
-          kubectl_version: latest # Use latest kubectl version
-          # Use the latest stable K8s node image (e.g., v1.30.0 or latest patch)
-          # Note: Always check Docker Hub for the absolute latest tag.
+          version: latest
+          kubectl_version: latest
+          # Using a very recent K8s node image (v1.34 is generally bleeding edge/future)
           node_image: kindest/node:v1.34.0 
-          # Apply the custom config to enable the ImageVolume feature gate
+          # 🚨 CORRECTED CONFIGURATION SYNTAX 🚨
           config: |
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
