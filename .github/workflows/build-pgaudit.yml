@@ -105,17 +105,43 @@ jobs:
       - name: Setup Kind Cluster
         uses: helm/kind-action@v1
         with:
-          version: v0.24.0
-          kubectl_version: v1.31.0
-          node_image: kindest/node:v1.31.0
+          version: v0.30.0
+          kubectl_version: v1.34.0
+          node_image: kindest/node:v1.34.0
           config: kind-config.yaml
 
 
-      - name: Check Kind Cluster Status
+      # - name: Check Kind Cluster Status
+      #   run: |
+      #     echo "Kind cluster 'kind' is ready."
+      #     kubectl cluster-info
+      #     kubectl get nodes
+          
+      - name: Install CloudNativePG Operator
         run: |
-          echo "Kind cluster 'kind' is ready."
-          kubectl cluster-info
-          kubectl get nodes
+          # Get latest CNPG release
+          CNPG_VERSION=$(curl -s https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/latest | jq -r '.tag_name')
+          echo "Installing CloudNativePG operator version: ${CNPG_VERSION}"
+          
+          # Extract version without 'v' prefix for branch name
+          BRANCH_VERSION=$(echo ${CNPG_VERSION} | sed 's/^v//' | cut -d. -f1,2)
+          
+          # Install CNPG operator using correct URL format
+          kubectl apply --server-side -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${BRANCH_VERSION}/releases/cnpg-${CNPG_VERSION#v}.yaml
+          
+      - name: Verify CNPG Operator Installation
+        run: |
+          # Wait for operator deployment to be ready
+          kubectl wait --for=condition=Available deployment/cnpg-controller-manager -n cnpg-system --timeout=120s
+          
+          # Check operator status
+          kubectl get pods -n cnpg-system
+          kubectl get deployment -n cnpg-system
+          
+          # Verify CRDs are installed
+          kubectl get crd | grep postgresql
+          
+          echo "✅ CloudNativePG operator installed successfully"
 
       - name: Run smoke tests
         run: |
@@ -134,47 +160,46 @@ jobs:
           
           # Create test pod with pgaudit extension
           kubectl apply -f - <<EOF
-          apiVersion: v1
-          kind: Pod
+          apiVersion: postgresql.cnpg.io/v1
+          kind: Cluster
           metadata:
-            name: pgaudit-test
+            name: postgresql-with-extensions
+            namespace: cnpg-system
           spec:
-            containers:
-            - name: postgres
-              image: ghcr.io/cloudnative-pg/postgresql:${PG_VER}-${DISTRO}
-              env:
-              - name: POSTGRES_PASSWORD
-                value: test
-              - name: POSTGRES_DB
-                value: test
-              command: ["/bin/bash", "-c"]
-              args:
-                - |
-                  export LD_LIBRARY_PATH=/opt/extension/lib:$LD_LIBRARY_PATH
-                  export PGDATA=/tmp/pgdata
-                  mkdir -p $PGDATA
-                  chown postgres:postgres $PGDATA
-                  su postgres -c "initdb -D $PGDATA"
-                  echo "shared_preload_libraries = 'pgaudit'" >> $PGDATA/postgresql.conf
-                  su postgres -c "pg_ctl -D $PGDATA -l /tmp/logfile start"
-                  sleep 5
-                  su postgres -c "createdb test"
-                  su postgres -c "psql -d test -c 'CREATE EXTENSION pgaudit;'"
-                  echo "pgaudit extension created successfully"
-                  tail -f /tmp/logfile
-              volumeMounts:
-              - name: pgaudit-ext
-                mountPath: /opt/extension
-            volumes:
-            - name: pgaudit-ext
-              image:
-                reference: ${IMAGE_TAG}
+            instances: 1
+            imageName: ghcr.io/cloudnative-pg/postgresql:${PG_VER}-${DISTRO}
+            postgresql:
+              extensions:
+                - name: pgaudit
+                  image:
+                    reference: ${IMAGE_TAG}
+            storage:
+              storageClass: standard
+              size: 1Gi
           EOF
+          kubectl wait --for=condition=Ready pod/postgresql-with-extensions-1 --timeout=120s -n cnpg-system
+          echo "✅ PostgreSQL cluster with pgaudit extension is ready"
           
-          kubectl describe pod pgaudit-test
-          kubectl get pod pgaudit-test -o yaml
-          kubectl wait --for=condition=Ready pod/pgaudit-test --timeout=120s
-          kubectl logs pgaudit-test --tail=20
+      - name: Verify pgaudit Extension
+        run: |
+          EXTENSION_NAME="pgaudit"
+          NAMESPACE="cnpg-system"
+          POD_NAME="postgresql-with-extensions-1"
+          CONTAINER_NAME="postgres"
+          
+          echo "🔍 Checking if ${EXTENSION_NAME} extension is available..."
+          
+          # Wait a bit for the extension to be fully loaded
+          sleep 10
+          
+          # Check if extension is available in pg_available_extensions
+          if kubectl exec "$POD_NAME" -n "$NAMESPACE" -c "$CONTAINER_NAME" -- sh -c \
+             "psql -U postgres -d postgres -t -c \"SELECT name FROM pg_available_extensions WHERE name = '$EXTENSION_NAME';\"" | \
+             grep -q "$EXTENSION_NAME"; then
+              echo "✅ Success! The '$EXTENSION_NAME' extension is available."
+          else
+              echo "❌ Failure! The '$EXTENSION_NAME' extension was NOT found in pg_available_extensions."
+          fi
           
       - name: Tag successful build
         if: success() && github.ref == 'refs/heads/main'
