@@ -108,7 +108,11 @@ jobs:
           version: v0.30.0
           kubectl_version: v1.34.0
           node_image: kindest/node:v1.34.0
-          config: kind-config.yaml
+          config: |
+            kind: Cluster
+            apiVersion: kind.x-k8s.io/v1alpha4
+            featureGates:
+              ImageVolume: true
 
 
       # - name: Check Kind Cluster Status
@@ -143,7 +147,7 @@ jobs:
           
           echo "✅ CloudNativePG operator installed successfully"
 
-      - name: Run smoke tests
+      - name: Create Postgres Cluster with Extension
         run: |
           PG_VER="${{ inputs.pg-version || '18' }}"
           DISTRO="${{ inputs.distro || 'bookworm' }}"
@@ -177,7 +181,7 @@ jobs:
               storageClass: standard
               size: 1Gi
           EOF
-          kubectl wait --for=jsonpath='{.status.status}=Cluster in healthy state' cluster/postgresql-with-extensions --timeout=300s -n cnpg-system
+          kubectl wait --for=jsonpath='{.status.phase}=Cluster in healthy state' cluster/postgresql-with-extensions --timeout=300s -n cnpg-system
           echo "✅ PostgreSQL cluster with pgaudit extension is ready"
           
       - name: Verify pgaudit Extension
