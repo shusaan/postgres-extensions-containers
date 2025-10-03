@@ -86,13 +86,30 @@ jobs:
       - name: Create Kind cluster with ImageVolume feature
         uses: helm/kind-action@v1
         with:
-          version: latest
-          kubectl_version: latest
+          version: v0.24.0
+          kubectl_version: v1.31.0
           config: |
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
-            featureGates:
-              ImageVolume: true
+            nodes:
+            - role: control-plane
+              image: kindest/node:v1.31.0
+              kubeadmConfigPatches:
+              - |
+                kind: ClusterConfiguration
+                apiServer:
+                  extraArgs:
+                    feature-gates: "ImageVolume=true"
+                controllerManager:
+                  extraArgs:
+                    feature-gates: "ImageVolume=true"
+                scheduler:
+                  extraArgs:
+                    feature-gates: "ImageVolume=true"
+              - |
+                kind: KubeletConfiguration
+                featureGates:
+                  ImageVolume: true
 
       - name: Run smoke tests
         run: |
