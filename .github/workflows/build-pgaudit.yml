@@ -89,11 +89,7 @@ jobs:
           version: v0.24.0
           kubectl_version: v1.31.0
           node_image: kindest/node:v1.31.0
-          config: |
-            kind: Cluster
-            apiVersion: kind.x-k8s.io/v1alpha4
-            featureGates:
-              ImageVolume: true
+          config: kind-config.yaml
 
 
       - name: Check Kind Cluster Status
