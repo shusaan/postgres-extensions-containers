@@ -86,12 +86,14 @@ jobs:
       - name: Create Kind cluster with ImageVolume feature
         uses: helm/kind-action@v1
         with:
+          version: latest
+          kubectl_version: latest
           config: |
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
             featureGates:
               ImageVolume: true
-        
+
       - name: Run smoke tests
         run: |
           PG_VER="${{ inputs.pg-version || '18' }}"
