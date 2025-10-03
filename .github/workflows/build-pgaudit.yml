@@ -31,41 +31,41 @@ jobs:
           cd pgaudit/source
           git checkout ${{ inputs.pgaudit-version }}
           
-      # - name: Get latest pgaudit version for push
-      #   if: github.event_name == 'push'
-      #   id: version
-      #   run: |
-      #     LATEST=$(curl -s https://api.github.com/repos/pgaudit/pgaudit/releases/latest | jq -r '.tag_name')
-      #     echo "version=${LATEST}" >> $GITHUB_OUTPUT
-      #     git clone https://github.com/pgaudit/pgaudit.git pgaudit/source
-      #     cd pgaudit/source
-      #     git checkout ${LATEST}
+      - name: Get latest pgaudit version for push
+        if: github.event_name == 'push'
+        id: version
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/pgaudit/pgaudit/releases/latest | jq -r '.tag_name')
+          echo "version=${LATEST}" >> $GITHUB_OUTPUT
+          git clone https://github.com/pgaudit/pgaudit.git pgaudit/source
+          cd pgaudit/source
+          git checkout ${LATEST}
           
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
         
-      # - name: Login to GitHub Container Registry
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ghcr.io
-      #     username: ${{ github.actor }}
-      #     password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           
-      # - name: Build and push
-      #   run: |
-      #     cd pgaudit
-      #     PGAUDIT_VER="${{ inputs.pgaudit-version || steps.version.outputs.version }}"
-      #     REGISTRY="ghcr.io/${{ github.repository_owner }}" \
-      #     PG_VERSION="${{ inputs.pg-version || '18' }}" \
-      #     DISTRO="${{ inputs.distro || 'bookworm' }}" \
-      #     PGAUDIT_VERSION="${PGAUDIT_VER}" \
-      #     docker buildx bake \
-      #       --set pgaudit.context=source \
-      #       --set "*.args.PG_VERSION=${{ inputs.pg-version || '18' }}" \
-      #       --set "*.args.DISTRO=${{ inputs.distro || 'bookworm' }}" \
-      #       --set "*.args.PGAUDIT_VERSION=${PGAUDIT_VER}" \
-      #       pgaudit \
-      #       --push
+      - name: Build and push
+        run: |
+          cd pgaudit
+          PGAUDIT_VER="${{ inputs.pgaudit-version || steps.version.outputs.version }}"
+          REGISTRY="ghcr.io/${{ github.repository_owner }}" \
+          PG_VERSION="${{ inputs.pg-version || '18' }}" \
+          DISTRO="${{ inputs.distro || 'bookworm' }}" \
+          PGAUDIT_VERSION="${PGAUDIT_VER}" \
+          docker buildx bake \
+            --set pgaudit.context=source \
+            --set "*.args.PG_VERSION=${{ inputs.pg-version || '18' }}" \
+            --set "*.args.DISTRO=${{ inputs.distro || 'bookworm' }}" \
+            --set "*.args.PGAUDIT_VERSION=${PGAUDIT_VER}" \
+            pgaudit \
+            --push
             
   smoke-test:
     needs: build
@@ -97,34 +97,6 @@ jobs:
           echo "Kind cluster 'kind' is ready."
           kubectl cluster-info
           kubectl get nodes
-
-      # - name: Create Kind cluster with ImageVolume feature
-      #   uses: helm/kind-action@v1
-      #   with:
-      #     version: v0.24.0
-      #     kubectl_version: v1.31.0
-      #     config: |
-      #       kind: Cluster
-      #       apiVersion: kind.x-k8s.io/v1alpha4
-      #       nodes:
-      #       - role: control-plane
-      #         image: kindest/node:v1.31.0
-      #         kubeadmConfigPatches:
-      #         - |
-      #           kind: ClusterConfiguration
-      #           apiServer:
-      #             extraArgs:
-      #               feature-gates: "ImageVolume=true"
-      #           controllerManager:
-      #             extraArgs:
-      #               feature-gates: "ImageVolume=true"
-      #           scheduler:
-      #             extraArgs:
-      #               feature-gates: "ImageVolume=true"
-      #         - |
-      #           kind: KubeletConfiguration
-      #           featureGates:
-      #             ImageVolume: true
 
       - name: Run smoke tests
         run: |
