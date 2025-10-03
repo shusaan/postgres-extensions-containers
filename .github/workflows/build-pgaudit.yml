@@ -84,14 +84,11 @@ jobs:
           fi
       
       - name: Setup Kind Cluster
-        # Using the latest version of the action
         uses: helm/kind-action@v1
         with:
-          version: latest
-          kubectl_version: latest
-          # Using a very recent K8s node image (v1.34 is generally bleeding edge/future)
-          node_image: kindest/node:v1.34.0 
-          # 🚨 CORRECTED CONFIGURATION SYNTAX 🚨
+          version: v0.24.0
+          kubectl_version: v1.31.0
+          node_image: kindest/node:v1.31.0
           config: |
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
