@@ -67,19 +67,16 @@ jobs:
               pgaudit-all \
               --push
           else
-            # Build single combination for feature branch
-            TARGET="pgaudit-feature"
+            # Build both distros for feature branch
             REGISTRY="ghcr.io/${{ github.repository_owner }}" \
             PG_VERSION="${{ inputs.pg-version || '18' }}" \
-            DISTRO="${{ inputs.distro || 'bookworm' }}" \
             PGAUDIT_VERSION="${PGAUDIT_VER}" \
             BRANCH_NAME="${{ github.ref_name }}" \
             docker buildx bake \
-              --set pgaudit-feature.context=source \
+              --set "*.context=source" \
               --set "*.args.PG_VERSION=${{ inputs.pg-version || '18' }}" \
-              --set "*.args.DISTRO=${{ inputs.distro || 'bookworm' }}" \
               --set "*.args.PGAUDIT_VERSION=${PGAUDIT_VER}" \
-              ${TARGET} \
+              pgaudit-feature-all \
               --push
           fi
             
