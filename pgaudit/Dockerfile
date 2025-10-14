@@ -2,6 +2,9 @@ ARG PG_VERSION=18
 ARG DISTRO=bookworm
 FROM ghcr.io/cloudnative-pg/postgresql:${PG_VERSION}-minimal-${DISTRO} AS builder
 
+ARG PG_VERSION
+ARG DISTRO
+
 USER 0
 
 COPY . /tmp/pgaudit
