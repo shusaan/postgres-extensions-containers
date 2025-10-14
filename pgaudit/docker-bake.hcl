@@ -33,6 +33,7 @@ target "pgaudit" {
   args = {
     PG_VERSION = PG_VERSION
     DISTRO = DISTRO
+    PGAUDIT_VERSION = PGAUDIT_VERSION
   }
 }
 
@@ -44,6 +45,7 @@ target "pgaudit-feature" {
   args = {
     PG_VERSION = PG_VERSION
     DISTRO = DISTRO
+    PGAUDIT_VERSION = PGAUDIT_VERSION
   }
 }
 
@@ -60,6 +62,7 @@ target "pgaudit-18-bookworm" {
   args = {
     PG_VERSION = "18"
     DISTRO = "bookworm"
+    PGAUDIT_VERSION = PGAUDIT_VERSION
   }
 }
 
@@ -68,5 +71,6 @@ target "pgaudit-18-trixie" {
   args = {
     PG_VERSION = "18"
     DISTRO = "trixie"
+    PGAUDIT_VERSION = PGAUDIT_VERSION
   }
 }
