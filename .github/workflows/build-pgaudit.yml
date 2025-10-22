@@ -164,7 +164,7 @@ jobs:
             namespace: cnpg-system
           spec:
             instances: 1
-            imageName: ghcr.io/cloudnative-pg/postgresql:${PG_VER}-${DISTRO}
+            imageName: ghcr.io/cloudnative-pg/postgresql:${PG_VER}-minimal-${DISTRO}
             postgresql:
               extensions:
                 - name: pgaudit
