@@ -43,5 +43,13 @@ RUN set -eux; \
 
 FROM scratch
 
+# Licenses
+COPY --from=builder /usr/share/doc/postgresql-${PG_MAJOR}-pgvector/copyright /licenses/postgresql-${PG_MAJOR}-pgvector/
+
+# Libraries
 COPY --from=builder /opt/extension/lib/ /lib/
+
+# Share
 COPY --from=builder /opt/extension/share/ /share/
+
+USER 65532:65532
