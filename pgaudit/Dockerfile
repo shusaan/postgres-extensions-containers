@@ -3,10 +3,17 @@ FROM $BASE AS builder
 
 ARG PG_MAJOR
 ARG EXT_VERSION
+ARG DISTRO=trixie
 
 USER 0
 
-RUN apt-get update && \
+RUN set -eux; \
+	# Ensure we can fetch the PostgreSQL Apt repository key and add the PGDG repo for the target distro
+	apt-get update && \
+	apt-get install -y --no-install-recommends gnupg wget ca-certificates dirmngr && \
+	wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+	echo "deb http://apt.postgresql.org/pub/repos/apt ${DISTRO}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+	apt-get update && \
 	apt-get install -y --no-install-recommends "postgresql-${PG_MAJOR}-pgaudit=${EXT_VERSION}"
 
 FROM scratch
