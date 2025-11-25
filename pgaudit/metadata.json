@@ -8,10 +8,10 @@
     "ld_library_path": [],
     "versions": {
       "bookworm": {
-        "18": "18.0-2.pgdg12+1"
+        "18": "18.0-1.pgdg120+1"
       },
       "trixie": {
-        "18": "18.0-2.pgdg12+1"
+        "18": "18.0-1.pgdg120+1"
       }
     }
   }
